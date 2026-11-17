@@ -320,7 +320,7 @@ table.roster tr:hover{background:#faf9f4;}
 }
 .idcard .head .htext{line-height:1.15; overflow:hidden; height:100%; min-width:0; flex:1;}
 .idcard .head .school-name{
-  font-family:'Inter'; font-weight:800; font-size:3mm; color:var(--card-primary);
+  font-family:'Inter'; font-weight:800; font-size:3.7mm; color:var(--card-primary);
   text-transform:uppercase; line-height:1.08; letter-spacing:.1mm;
   /* previously capped at 2 lines / 7.6mm — a longer school name would
      hit the auto-shrink font floor and still not fit, so it was
@@ -329,13 +329,13 @@ table.roster tr:hover{background:#faf9f4;}
      other zones below) gives long names genuine room instead of
      shrinking them into illegibility or cutting them off. */
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden;
-  max-height:11.4mm;
+  max-height:12.2mm;
 }
 .idcard .head .school-address{
-  font-size:1.85mm;font-weight:600;color:#5f7185;letter-spacing:.05mm; line-height:1.2;
-  margin-top:.5mm;
+  font-size:2.35mm;font-weight:600;color:#5f7185;letter-spacing:.05mm; line-height:1.2;
+  margin-top:.6mm;
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
-  max-height:4.2mm;
+  max-height:5.8mm;
 }
 .idcard.back .head{height:20.3mm;}
 
@@ -474,8 +474,8 @@ table.roster tr:hover{background:#faf9f4;}
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .pi-sign{text-align:center; padding-top:.8mm; padding-bottom:1mm; flex:none;}
-.pi-sign .sig-box{height:6mm; margin:0 auto -1.2mm; display:flex; align-items:flex-end; justify-content:center;}
-.pi-sign .sig-box img{max-height:6mm; max-width:24mm; width:auto; height:auto; object-fit:contain; display:block;}
+.pi-sign .sig-box{height:12mm; margin:0 auto -2.2mm; display:flex; align-items:flex-end; justify-content:center;}
+.pi-sign .sig-box img{max-height:12mm; max-width:46mm; width:auto; height:auto; object-fit:contain; display:block;}
 .pi-sign .sig-name{
   font-family:'Inter'; font-weight:700; font-size:2.3mm; border-top:.4mm solid var(--card-accent); padding-top:.4mm;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--card-primary);
@@ -527,6 +527,18 @@ table.roster tr:hover{background:#faf9f4;}
 .locked-logo img,.locked-logo .miss{width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 4px;}
 .locked-logo .miss{border:1.5px dashed var(--danger);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--danger);font-size:18px;}
 .locked-logo img.sig{width:110px;height:60px;}
+.asset-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+@media(max-width:820px){.asset-grid{grid-template-columns:repeat(2,1fr);}}
+.asset-slot{border:1.5px solid var(--line);border-radius:12px;background:#fcfbf8;padding:12px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.asset-slot .pv{width:72px;height:72px;display:flex;align-items:center;justify-content:center;}
+.asset-slot .pv img{max-width:100%;max-height:100%;object-fit:contain;}
+.asset-slot .pv .miss{width:60px;height:60px;border:1.5px dashed var(--danger);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--danger);font-size:18px;}
+.asset-slot .nm{font-size:11.5px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.3px;}
+.asset-slot .st{font-size:11px;color:var(--muted);}
+.asset-slot .st.ok{color:var(--leaf);font-weight:700;}
+.asset-slot .st.bad{color:var(--danger);font-weight:700;}
+.asset-slot .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.asset-slot input[type=file]{display:none;}
 .save-status{font-size:12px;color:#cfd9ec;background:rgba(255,255,255,.1);padding:5px 10px;border-radius:99px;}
 .save-status.err{background:#b23b3b;color:#fff;}
 .rec-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
@@ -607,13 +619,18 @@ table.roster tr:hover{background:#faf9f4;}
 
       <div class="card-block">
         <h3>School information <span class="count-pill">🔒 Permanent</span></h3>
-        <p class="hint">Set once in <b>config.js</b> and the <b>assets</b> folder. These appear on every ID automatically and cannot be changed from this page.</p>
+        <p class="hint">Set once in <b>config.js</b>. These appear on every ID automatically and cannot be changed from this page.</p>
         <div class="locked-grid" id="locked-info"></div>
-        <div class="locked-logos" id="locked-logos"></div>
-        <div class="field" style="max-width:240px;margin:16px 0 0;">
+        <div class="field" style="max-width:240px;margin:6px 0 0;">
           <label>Validity starts (SY)</label>
           <input type="number" id="s-yearstart" placeholder="e.g. 2026" min="1990" max="2100">
         </div>
+      </div>
+
+      <div class="card-block">
+        <h3>Logos &amp; e-signature</h3>
+        <p class="hint">Upload each image once. It is saved permanently in this browser and used on every ID. PNG with a transparent background looks best. Include these in your backup so they can be restored on another computer.</p>
+        <div class="asset-grid" id="asset-slots"></div>
       </div>
 
       <div class="card-block">
@@ -1485,7 +1502,8 @@ async function flushSave(){
   const ok1 = await Store.set('students', students);
   const ok2 = await Store.set('printLog', printLog);
   const ok3 = await Store.set('meta', {yearStart:settings.yearStart});
-  setSaveStatus(ok1 && ok2 && ok3 ? 'saved' : 'error');
+  const ok4 = await Store.set('assets', uploaded);
+  setSaveStatus(ok1 && ok2 && ok3 && ok4 ? 'saved' : 'error');
 }
 window.addEventListener('pagehide', ()=>{ if(loaded) flushSave(); });
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden && loaded) flushSave(); });
@@ -1503,30 +1521,66 @@ function testImage(url){
     im.src = url;
   });
 }
+let uploaded = {};   // key -> data URL uploaded in the app (saved permanently)
+let defaults = {};   // key -> default file path from config.js (only if the file exists)
 async function checkAssets(){
-  const missing = [];
-  for(const k of Object.keys(settings.logos)){
-    if(!(await testImage(settings.logos[k]))){ missing.push(settings.logos[k]||k); settings.logos[k]=null; }
+  for(const k of Object.keys(ASSET_LABELS)){
+    defaults[k] = (await testImage(CFG_LOGOS[k])) ? CFG_LOGOS[k] : null;
   }
-  if(!(await testImage(settings.signature))){ if(settings.signature) missing.push(settings.signature); settings.signature=null; }
-  return missing;
+  defaults.signature = (await testImage(CFG.signature)) ? CFG.signature : null;
 }
-function renderLockedInfo(missing){
+function applyAssets(){
+  Object.keys(ASSET_LABELS).forEach(k=>{ settings.logos[k] = uploaded[k] || defaults[k] || null; });
+  settings.signature = uploaded.signature || defaults.signature || null;
+}
+function renderLockedInfo(){
   const item = (k,v)=>`<div class="locked-item"><div class="k">${k}</div><div class="v">${esc(v)||'—'}</div></div>`;
   el('locked-info').innerHTML =
     item('School name', settings.name) + item('School address', settings.address) +
     item('School ID', settings.code) + item("Principal's name", settings.principal + (settings.ptitle?', '+settings.ptitle:''));
-  const logo = (k)=> settings.logos[k]
-    ? `<div class="locked-logo"><img src="${esc(settings.logos[k])}"><span>${ASSET_LABELS[k]}</span></div>`
-    : `<div class="locked-logo"><div class="miss">!</div><span>${ASSET_LABELS[k]}<br>missing</span></div>`;
-  const sig = settings.signature
-    ? `<div class="locked-logo"><img class="sig" src="${esc(settings.signature)}"><span>E-signature</span></div>`
-    : `<div class="locked-logo"><div class="miss" style="border-radius:8px;width:110px;">!</div><span>E-signature<br>missing</span></div>`;
-  el('locked-logos').innerHTML = Object.keys(ASSET_LABELS).map(logo).join('') + sig;
-  if(missing && missing.length){
-    el('locked-logos').insertAdjacentHTML('afterend',
-      `<div class="note">Missing image file(s): <b>${missing.map(esc).join(', ')}</b>. Upload them to the <b>assets</b> folder of your repository using exactly these names.</div>`);
-  }
+}
+function resizeImage(file, maxDim, cb){
+  readFileAsDataURL(file, url=>{
+    const im = new Image();
+    im.onload = ()=>{
+      const sc = Math.min(1, maxDim/Math.max(im.width, im.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1,Math.round(im.width*sc)); c.height = Math.max(1,Math.round(im.height*sc));
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      cb(c.toDataURL('image/png'));
+    };
+    im.onerror = ()=> alert('Could not read that image. Please use a PNG, JPG or SVG file.');
+    im.src = url;
+  });
+}
+function renderAssetSlots(){
+  const items = [['school','School logo'],['deped','DepEd logo'],['bagong','Bagong Pilipinas logo'],['district','District logo'],['signature','E-signature']];
+  el('asset-slots').innerHTML = items.map(([k,label])=>{
+    const cur = k==='signature' ? settings.signature : settings.logos[k];
+    const isUp = !!uploaded[k];
+    const status = isUp ? '<div class="st ok">Uploaded</div>' : cur ? '<div class="st">Default file</div>' : '<div class="st bad">Not uploaded</div>';
+    const pv = cur ? `<img src="${esc(cur)}">` : '<div class="miss">!</div>';
+    return `<div class="asset-slot" data-key="${k}">
+      <div class="pv">${pv}</div><div class="nm">${label}</div>${status}
+      <div class="btns">
+        <label class="btn btn-gold btn-sm" style="cursor:pointer;">${cur?'Replace':'Upload'}<input type="file" accept="image/*"></label>
+        ${isUp ? '<button type="button" class="btn btn-ghost btn-sm" data-act="reset">Remove</button>' : ''}
+      </div></div>`;
+  }).join('');
+  el('asset-slots').querySelectorAll('.asset-slot').forEach(slot=>{
+    const k = slot.dataset.key;
+    slot.querySelector('input[type=file]').addEventListener('change', e=>{
+      const f = e.target.files[0]; if(!f) return;
+      resizeImage(f, k==='signature' ? 900 : 600, url=>{
+        uploaded[k] = url; applyAssets(); renderAssetSlots(); refreshPreview(); persist();
+      });
+    });
+    const rb = slot.querySelector('[data-act=reset]');
+    if(rb) rb.addEventListener('click', ()=>{
+      if(!confirm('Remove the uploaded image?')) return;
+      delete uploaded[k]; applyAssets(); renderAssetSlots(); refreshPreview(); persist();
+    });
+  });
 }
 
 /* ============================================================
@@ -1593,7 +1647,7 @@ function downloadBlob(blob, name){
 function stampName(ext){ return 'fces-id-' + new Date().toISOString().slice(0,10) + '.' + ext; }
 el('rec-export').addEventListener('click', ()=>{
   const data = {app:'fces-id-generator', version:1, exportedAt:new Date().toISOString(),
-    colors:settings.colors, yearStart:settings.yearStart, students, printLog};
+    yearStart:settings.yearStart, assets:uploaded, students, printLog};
   downloadBlob(new Blob([JSON.stringify(data)],{type:'application/json'}), 'backup-'+stampName('json'));
 });
 el('rec-import-btn').addEventListener('click', ()=> el('rec-import').click());
@@ -1617,6 +1671,7 @@ el('rec-import').addEventListener('change', ()=>{
         d.printLog.forEach(e=>{ if(!seen.has(e.at+e.side)) printLog.push(e); });
         printLog.sort((a,b)=> (a.at<b.at?-1:1));
       }
+      if(d.assets && typeof d.assets==='object'){ Object.assign(uploaded, d.assets); applyAssets(); renderAssetSlots(); }
       renderRoster(); renderRecords(); refreshPreview(); persist();
       alert(`Backup restored: ${added} added, ${updated} updated.`);
     }catch(e){ alert('That file is not a valid backup from this generator.'); }
@@ -1642,11 +1697,14 @@ el('rec-clear').addEventListener('click', ()=>{
    INIT
    ============================================================ */
 (async function init(){
-  const [missing] = await Promise.all([checkAssets(), Store.init()]);
+  await Promise.all([checkAssets(), Store.init()]);
   const meta = await Store.get('meta');
   if(meta){
     if(meta.yearStart) settings.yearStart = meta.yearStart;
   }
+  const upl = await Store.get('assets');
+  if(upl && typeof upl==='object') uploaded = upl;
+  applyAssets();
   const saved = await Store.get('students');
   if(Array.isArray(saved)) students = saved;
   const log = await Store.get('printLog');
@@ -1654,7 +1712,8 @@ el('rec-clear').addEventListener('click', ()=>{
 
   el('s-yearstart').value = settings.yearStart;
   loaded = true;
-  renderLockedInfo(missing);
+  renderLockedInfo();
+  renderAssetSlots();
   applyColors();
   renderRoster();
   refreshPreview();
