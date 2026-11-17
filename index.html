@@ -273,7 +273,7 @@ table.roster tr:hover{background:#faf9f4;}
    tick marks used elsewhere on the card so the bottom of the printed
    ID doesn't end on bare white space. */
 .idcard .foot-deco{
-  height:2mm; margin:1.2mm 2.8mm 0; border-radius:.5mm; flex:none;
+  height:2mm; margin:.6mm 2.8mm 0; border-radius:.5mm; flex:none;
   background: repeating-linear-gradient(45deg,
     var(--card-primary) 0, var(--card-primary) 1.4mm,
     var(--card-accent) 1.4mm, var(--card-accent) 2.8mm);
@@ -283,13 +283,13 @@ table.roster tr:hover{background:#faf9f4;}
    shown along the bottom of the card face, above the footer stripe. */
 .idcard .footer-logos{
   display:flex; align-items:center; justify-content:center; gap:2.6mm;
-  margin:.8mm 2.8mm 0; flex:none;
+  margin:.3mm 2.8mm 0; flex:none;
 }
 .idcard .footer-logos img{
-  width:10.5mm; height:10.5mm; object-fit:contain; border-radius:50%; flex:none;
+  width:11.5mm; height:11.5mm; object-fit:contain; border-radius:50%; flex:none;
 }
 .idcard .footer-logos .ph-logo-sm{
-  width:10.5mm; height:10.5mm; border-radius:50%; background:#eee; flex:none;
+  width:11.5mm; height:11.5mm; border-radius:50%; background:#eee; flex:none;
   display:flex; align-items:center; justify-content:center; color:#9aa; font-size:4.2mm;
 }
 .idcard .inner{
@@ -370,7 +370,8 @@ table.roster tr:hover{background:#faf9f4;}
   margin:0 2.8mm 1.2mm; text-align:center;
   background:linear-gradient(90deg, var(--card-primary), #2c527f);
   color:#ffffff; border-left:1mm solid var(--card-accent);
-  font-family:'Inter'; font-weight:700; font-size:3.1mm; letter-spacing:.15mm; text-transform:uppercase;
+  font-family:'Arial Narrow','Liberation Sans Narrow','Nimbus Sans Narrow','Helvetica Neue',Arial,sans-serif; font-stretch:condensed;
+  font-weight:700; font-size:3.6mm; letter-spacing:.1mm; text-transform:uppercase;
   padding:1.4mm 1mm; border-radius:.6mm;
   /* previously single-line with white-space:nowrap + text-overflow:ellipsis,
      so any full name that didn't fit even after auto-shrink got cut off
