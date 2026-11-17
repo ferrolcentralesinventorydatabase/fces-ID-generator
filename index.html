@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCES School ID Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.5/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --ink:#0f1b2d;
+  --paper:#f3f1ea;
+  --panel:#ffffff;
+  --line:#dcd7c8;
+  --muted:#6b7280;
+  --brand:#0f2a52;
+  --brand-2:#153a6b;
+  --gold:#e8b93a;
+  --gold-ink:#5c4300;
+  --leaf:#1f7a4d;
+  --danger:#b23b3b;
+
+  --card-primary:#1e3a5f;
+  --card-accent:#4a90d9;
+  --card-outer-top:#eef2f7;
+  --card-outer-bottom:#0f2137;
+  --card-foil:#4a90d9;
+  --card-hairline:#d5dce5;
+
+  --card-w:64.78mm;
+  --card-h:102.72mm;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+}
+.mono{font-family:'JetBrains Mono',monospace;}
+.disp{font-family:'Oswald',sans-serif;}
+
+::selection{background:var(--gold);color:var(--ink);}
+
+/* ---------- layout shell ---------- */
+.app{
+  display:grid;
+  grid-template-columns: 1fr 380px;
+  min-height:100vh;
+}
+@media (max-width: 980px){
+  .app{grid-template-columns:1fr;}
+  .rail{order:-1; position:static !important;}
+}
+
+.topbar{
+  grid-column:1 / -1;
+  background:var(--brand);
+  color:#fff;
+  padding:18px 28px;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  flex-wrap:wrap;
+  border-bottom:4px solid var(--gold);
+}
+.brandmark{
+  width:40px;height:40px;border-radius:10px;
+  background:var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Oswald';font-weight:700;color:var(--brand);font-size:18px;
+  flex:none;
+}
+.topbar h1{
+  font-family:'Oswald';font-weight:600;font-size:20px;margin:0;
+  letter-spacing:.3px;
+}
+.topbar .sub{font-size:12px;color:#cfd9ec;margin-top:2px;}
+.steps{
+  margin-left:auto;
+  display:flex;gap:6px;
+  background:rgba(255,255,255,.08);
+  padding:5px;border-radius:12px;
+}
+.step-btn{
+  border:none;background:transparent;color:#dfe6f2;
+  font-family:'Oswald';font-size:13px;letter-spacing:.4px;
+  padding:9px 16px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+}
+.step-btn .n{
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(255,255,255,.18);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-family:'Inter';font-weight:700;
+}
+.step-btn.active{background:var(--gold);color:var(--brand);}
+.step-btn.active .n{background:var(--brand);color:var(--gold);}
+
+main{padding:28px; max-width:900px;}
+.rail{
+  position:sticky; top:0; align-self:start;
+  height:100vh; overflow-y:auto;
+  padding:28px 24px;
+  background:linear-gradient(180deg,#eef0e6,#e7e3d4);
+  border-left:1px solid var(--line);
+  display:flex; flex-direction:column; align-items:center; gap:16px;
+}
+.rail h2{font-family:'Oswald';font-size:15px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 0 4px 0;align-self:flex-start;}
+
+section.panel{display:none;}
+section.panel.active{display:block;}
+
+.card-block{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px 24px;
+  margin-bottom:20px;
+}
+.card-block h3{
+  font-family:'Oswald';font-size:16px;letter-spacing:.3px;
+  margin:0 0 4px 0;
+}
+.card-block p.hint{color:var(--muted);font-size:12.5px;margin:0 0 16px 0;}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+@media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+input[type=text],input[type=date],input[type=tel],input[type=number],textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;
+  font-family:'Inter';font-size:14px;background:#fcfbf8;color:var(--ink);
+}
+input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:1px;border-color:var(--brand);}
+.field{margin-bottom:14px;}
+textarea{resize:vertical;min-height:56px;}
+
+.logo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+@media(max-width:720px){.logo-grid{grid-template-columns:repeat(2,1fr);}}
+.logo-slot{
+  border:1.5px dashed var(--line);border-radius:12px;
+  background:#fcfbf8;
+  padding:12px;text-align:center;cursor:pointer;
+  transition:.15s;
+}
+.logo-slot:hover{border-color:var(--brand);}
+.logo-slot img{width:56px;height:56px;object-fit:contain;margin-bottom:8px;}
+.logo-slot .ph{
+  width:56px;height:56px;border-radius:50%;background:#eee;margin:0 auto 8px;
+  display:flex;align-items:center;justify-content:center;color:#aaa;font-size:22px;
+}
+.logo-slot span{display:block;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+.logo-slot input{display:none;}
+
+.theme-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.theme-swatch{
+  width:64px;height:40px;border-radius:8px;cursor:pointer;border:2px solid transparent;
+  position:relative; overflow:hidden;
+}
+.theme-swatch.selected{border-color:var(--ink);}
+.theme-swatch .t{height:40%;}
+.theme-swatch .b{height:60%;}
+
+.color-pickers{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+.color-pickers label{margin:0;}
+.cp-item{display:flex;align-items:center;gap:8px;}
+input[type=color]{width:38px;height:32px;border:none;border-radius:6px;padding:0;background:none;cursor:pointer;}
+
+/* buttons */
+.btn{
+  font-family:'Inter';font-weight:700;font-size:13.5px;
+  padding:10px 18px;border-radius:9px;border:1.5px solid transparent;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.btn-primary{background:var(--brand);color:#fff;}
+.btn-primary:hover{background:var(--brand-2);}
+.btn-gold{background:var(--gold);color:var(--gold-ink);}
+.btn-gold:hover{filter:brightness(1.05);}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--ink);}
+.btn-ghost:hover{border-color:var(--brand);}
+.btn-danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+.btn-danger:hover{background:var(--danger);color:#fff;}
+.btn-sm{padding:6px 10px;font-size:12px;border-radius:7px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+.actions-row{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;}
+
+/* photo capture */
+.photo-tabs{display:flex;gap:6px;margin-bottom:10px;}
+.photo-tab{padding:6px 12px;border-radius:7px;border:1.5px solid var(--line);background:#fff;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);}
+.photo-tab.active{background:var(--brand);color:#fff;border-color:var(--brand);}
+.photo-stage{
+  width:100%;max-width:260px;aspect-ratio:4/5;border-radius:12px;overflow:hidden;
+  background:#111;position:relative;border:1.5px solid var(--line);
+}
+.photo-stage video,.photo-stage canvas{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-stage img{width:100%;height:100%;object-fit:contain;display:block;background:#eceae2;}
+.photo-stage .empty{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#8a94a6;font-size:12px;background:#eceae2;
+}
+.photo-controls{display:flex;gap:8px;margin-top:10px;}
+
+/* roster table */
+table.roster{width:100%;border-collapse:collapse;font-size:13px;}
+table.roster th{
+  text-align:left;font-family:'Oswald';font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;
+  color:var(--muted);padding:8px 10px;border-bottom:2px solid var(--line);
+}
+table.roster td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+table.roster tr:hover{background:#faf9f4;}
+.roster-thumb{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#eee;display:block;}
+.roster-empty{padding:40px 10px;text-align:center;color:var(--muted);font-size:13px;}
+.roster-empty b{display:block;font-family:'Oswald';font-size:15px;color:var(--ink);margin-bottom:4px;}
+.chk{width:16px;height:16px;}
+
+.csv-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);}
+.csv-bar .fname{font-size:12px;color:var(--muted);}
+
+.count-pill{
+  background:var(--brand);color:#fff;font-family:'Oswald';font-size:11.5px;
+  padding:2px 9px;border-radius:999px;margin-left:8px;
+}
+
+/* ---------- ID CARD (shared: preview + print) ---------- */
+.idcard{
+  width:var(--card-w); height:var(--card-h);
+  border-radius:1.6mm;
+  overflow:hidden;
+  position:relative;
+  background:linear-gradient(160deg, var(--card-outer-bottom), #1e3a5f 70%);
+  font-family:'Inter';
+  box-shadow:0 6px 18px rgba(15,33,55,.28);
+  break-inside:avoid; page-break-inside:avoid;
+}
+/* diagonal accent cut in the bottom-right corner of the outer frame —
+   a common corporate-badge motif; purely decorative. It sits BEHIND
+   .inner (z-index:0 vs .inner's z-index:1) so the white face always
+   covers it — only the sliver in the outer border margin shows. It
+   used to sit ABOVE .inner with a size (9mm) larger than the border
+   margin (2.6-3mm), so it visibly ate into the barcode/QR area. */
+.idcard::before{
+  content:''; position:absolute; right:0; bottom:0; width:9mm; height:9mm;
+  background:var(--card-accent); opacity:.9;
+  clip-path:polygon(100% 0, 100% 100%, 0 100%);
+  z-index:0; pointer-events:none;
+}
+.idcard .band-top{
+  height:16%; background:linear-gradient(90deg, var(--card-outer-top), #f7f9fb);
+  position:absolute; top:0; left:0; right:0;
+  overflow:hidden;
+  border-bottom:.5mm solid var(--card-accent);
+}
+/* mirrors .band-top at the bottom outer edge so the card is framed on
+   both sides, not just the top — otherwise the bottom margin was just
+   bare navy gradient with no design treatment at all. */
+.idcard .band-bottom{
+  height:8%; background:linear-gradient(90deg, #f7f9fb, var(--card-outer-top));
+  position:absolute; bottom:0; left:0; right:0;
+  overflow:hidden;
+  border-top:.5mm solid var(--card-accent);
+  z-index:0;
+}
+/* small decorative footer strip on the white face itself — a repeating
+   chevron pattern in the two brand accent colors, echoing the corner
+   tick marks used elsewhere on the card so the bottom of the printed
+   ID doesn't end on bare white space. */
+.idcard .foot-deco{
+  height:2mm; margin:1.2mm 2.8mm 0; border-radius:.5mm; flex:none;
+  background: repeating-linear-gradient(45deg,
+    var(--card-primary) 0, var(--card-primary) 1.4mm,
+    var(--card-accent) 1.4mm, var(--card-accent) 2.8mm);
+  opacity:.85;
+}
+/* row of official partner/agency logos (DepEd, Bagong Pilipinas, District)
+   shown along the bottom of the card face, above the footer stripe. */
+.idcard .footer-logos{
+  display:flex; align-items:center; justify-content:center; gap:2.6mm;
+  margin:.8mm 2.8mm 0; flex:none;
+}
+.idcard .footer-logos img{
+  width:9mm; height:9mm; object-fit:contain; border-radius:50%; flex:none;
+}
+.idcard .footer-logos .ph-logo-sm{
+  width:9mm; height:9mm; border-radius:50%; background:#eee; flex:none;
+  display:flex; align-items:center; justify-content:center; color:#9aa; font-size:4.2mm;
+}
+.idcard .inner{
+  position:absolute; left:2.6mm; right:2.6mm; top:3.4mm; bottom:3mm;
+  background:#ffffff;
+  border-radius:1mm;
+  display:flex; flex-direction:column; justify-content:space-between;
+  overflow:hidden;
+  box-shadow:0 0 0 .3mm var(--card-hairline) inset;
+  z-index:1;
+}
+/* thin corner tick marks framing the top of the card face — structured,
+   corporate registration-style marks; purely decorative overlays */
+.idcard .inner::before,.idcard .inner::after{
+  content:''; position:absolute; top:0; width:2.6mm; height:.5mm; z-index:2; pointer-events:none;
+  background:var(--card-accent);
+}
+.idcard .inner::before{ left:0; }
+.idcard .inner::after{ right:0; }
+.idcard .head{
+  display:flex; align-items:flex-start; gap:2.2mm; padding:2.4mm 2.8mm 1.4mm;
+  height:20.3mm; overflow:hidden; flex:none;
+}
+.idcard .head img.logo{width:11mm;height:11mm;object-fit:contain;flex:none;}
+.idcard .head .ph-logo{
+  width:11mm;height:11mm;border-radius:50%;background:#eee;flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:4.6mm;color:#bbb;
+}
+.idcard .head .htext{line-height:1.15; overflow:hidden; height:100%; min-width:0; flex:1;}
+.idcard .head .school-name{
+  font-family:'Inter'; font-weight:800; font-size:3mm; color:var(--card-primary);
+  text-transform:uppercase; line-height:1.08; letter-spacing:.1mm;
+  /* previously capped at 2 lines / 7.6mm — a longer school name would
+     hit the auto-shrink font floor and still not fit, so it was
+     silently hard-clipped mid-word with no ellipsis at all. A 3rd
+     line (with the head grown to match, and space reclaimed from
+     other zones below) gives long names genuine room instead of
+     shrinking them into illegibility or cutting them off. */
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden;
+  max-height:11.4mm;
+}
+.idcard .head .school-address{
+  font-size:1.85mm;font-weight:600;color:#5f7185;letter-spacing:.05mm; line-height:1.2;
+  margin-top:.5mm;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+  max-height:4.2mm;
+}
+.idcard.back .head{height:20.3mm;}
+
+.idcard .idband{
+  margin:0 2.8mm 1mm; background:#eef2f7;
+  color:var(--card-primary); border:.25mm solid var(--card-accent);
+  font-family:'Inter'; font-weight:700; font-size:2.5mm; letter-spacing:.35mm;
+  padding:.8mm 2mm; border-radius:3mm;
+  text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:none;
+}
+
+/* self-contained two-tone frame: solid primary-color border with an
+   inset accent hairline just inside it. Replaces an earlier decorative
+   accent chip that hung off the frame's bottom-right corner — it
+   overlapped neighboring content and, at one point, floating corner
+   brackets that sat visibly detached from the border. Keeping the
+   accent entirely inside the frame's own box removes both problems. */
+.idcard .photo-wrap{
+  align-self:center; width:25mm; height:25mm; margin:.3mm 0 1mm; flex:none;
+  border:.35mm solid var(--card-primary); border-radius:1mm; overflow:hidden; background:#e3e3e3;
+  position:relative;
+  box-shadow:0 0 0 .35mm var(--card-accent) inset, 0 1.2mm 2.4mm rgba(15,33,55,.18);
+}
+.idcard .photo-wrap>img,.idcard .photo-wrap>.ph{
+  width:100%; height:100%; object-fit:cover; display:block;
+}
+.idcard .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+.idcard .photo-wrap .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9aa;font-size:8mm;}
+
+.idcard .nameband{
+  margin:0 2.8mm 1.2mm; text-align:center;
+  background:linear-gradient(90deg, var(--card-primary), #2c527f);
+  color:#ffffff; border-left:1mm solid var(--card-accent);
+  font-family:'Inter'; font-weight:700; font-size:3.1mm; letter-spacing:.15mm; text-transform:uppercase;
+  padding:1.4mm 1mm; border-radius:.6mm;
+  /* previously single-line with white-space:nowrap + text-overflow:ellipsis,
+     so any full name that didn't fit even after auto-shrink got cut off
+     mid-name in the actual printed card. Wrapping onto up to 2 lines (same
+     pattern already used for .school-name) means the shrink loop only ever
+     needs to reduce the font size, never chop the name itself — the full
+     name always prints. display:flex + centering keeps 1-line names
+     vertically centered in the taller band. */
+  white-space:normal; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; -webkit-box-pack:center; -webkit-box-align:center;
+  height:9.6mm; line-height:3.6mm;
+  flex:none;
+}
+.idcard .lrn-label{
+  text-align:center; font-family:'Inter'; font-size:2mm; font-weight:700; letter-spacing:.35mm;
+  color:#5f7185; text-transform:uppercase; margin-bottom:.6mm; flex:none;
+}
+.idcard .lrn-band{
+  margin:0 2.8mm 1mm; background:#eef2f7; text-align:center;
+  border:.25mm solid var(--card-hairline); border-top:.6mm solid var(--card-accent);
+  font-family:'JetBrains Mono'; font-weight:700; font-size:3.1mm; letter-spacing:1.1mm;
+  padding:.8mm .5mm .8mm 1.6mm; border-radius:.6mm; color:var(--card-primary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; height:6mm; line-height:4.4mm;
+  flex:none;
+}
+.idcard .barcode-wrap{margin:0 3.2mm; text-align:center; height:8.3mm; flex:none;}
+.idcard .barcode-wrap svg{width:100%; height:8.3mm; display:block;}
+
+/* back side specifics */
+.idcard.back .inner{padding-bottom:0;}
+.qr-section{
+  margin:.4mm 2.8mm .8mm; border:.25mm solid var(--card-hairline); border-top:.6mm solid var(--card-accent); border-radius:.6mm;
+  display:flex; align-items:center; gap:1.6mm;
+  text-align:left; padding:1.1mm 1.8mm;
+  background:#eef2f7;
+  flex:none;
+}
+/* the actual scannable QR — previously the QRCode library was loaded and
+   wired up (paintQRCodes(), validityQRText()) but no .qr-code element
+   existed anywhere, so nothing ever rendered here; only the text label
+   next to it showed. */
+.qr-code{
+  width:8mm; height:8mm; flex:none; background:#fff; border-radius:.5mm;
+  overflow:hidden; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 0 .25mm var(--card-hairline) inset;
+}
+.qr-code img,.qr-code canvas,.qr-code table{width:100% !important; height:100% !important; image-rendering:pixelated;}
+.qr-text{line-height:1.3; min-width:0; flex:1;}
+.qr-label{
+  font-family:'Inter'; font-weight:700; font-size:2mm; text-transform:uppercase; letter-spacing:.3mm;
+  color:#5f7185;
+}
+.qr-range{
+  font-size:2.4mm; font-weight:700; color:var(--card-primary); margin-top:.4mm;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.qr-sub{
+  font-size:1.7mm; color:#8b98a8; margin-top:.6mm; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.pi-band{
+  margin:.4mm 2.8mm 1mm; text-align:center;
+  background:linear-gradient(90deg, var(--card-primary), #2c527f);
+  color:#ffffff; border-left:1mm solid var(--card-accent);
+  font-family:'Inter'; font-weight:700; font-size:2.8mm; letter-spacing:.15mm; text-transform:uppercase;
+  padding:.9mm; border-radius:.6mm; flex:none;
+}
+.pi-body{padding:0 3.2mm; flex:1; display:flex; flex-direction:column; min-height:0;}
+.pi-line{
+  font-size:2.1mm; margin-bottom:1.2mm; line-height:1.3; height:2.9mm;
+  display:flex; align-items:baseline; gap:1mm; overflow:hidden; flex:none;
+}
+.pi-line b{font-family:'Inter'; font-weight:700; letter-spacing:.05mm; color:#5f7185; white-space:nowrap; flex:none;}
+.pi-line .val{
+  border-bottom:.2mm solid var(--card-hairline); flex:1; min-width:0; padding-left:1mm;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom;
+  color:var(--card-primary); font-weight:600; font-size:1.85mm;
+}
+.pi-line.pi-line-address{
+  height:auto; min-height:5mm; max-height:5mm; align-items:flex-start;
+  white-space:normal; overflow:hidden; text-overflow:clip;
+}
+.pi-line.pi-line-address .val{
+  white-space:normal; max-width:100%; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; overflow:hidden; vertical-align:top;
+}
+.pi-emg{font-style:normal; font-size:2mm; text-align:center; margin:1mm 0; flex:none; color:#5f7185; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+/* previously .pi-sign alone had margin-top:auto, which shoved the whole
+   signature block to the very bottom and left a large orphaned empty
+   gap above it whenever the personal-info fields were short. This note
+   now absorbs that leftover space with genuinely useful ID-card
+   messaging. It gets a FIXED height (like every other zone on this
+   card) and a single line with auto-shrink-to-fit, rather than an
+   open-ended block, so it can never push the signature past the
+   card's fixed bottom edge. */
+.pi-footer-note{
+  margin:auto 0 .6mm; text-align:center; font-size:1.7mm; color:#8b98a8; font-weight:600;
+  height:2.6mm; line-height:2.6mm; flex:none;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.pi-sign{text-align:center; padding-top:.8mm; padding-bottom:1mm; flex:none;}
+.pi-sign .sig-box{height:6mm; margin:0 auto -1.2mm; display:flex; align-items:flex-end; justify-content:center;}
+.pi-sign .sig-box img{max-height:6mm; max-width:24mm; width:auto; height:auto; object-fit:contain; display:block;}
+.pi-sign .sig-name{
+  font-family:'Inter'; font-weight:700; font-size:2.3mm; border-top:.4mm solid var(--card-accent); padding-top:.4mm;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--card-primary);
+}
+.pi-sign .sig-title{font-size:2mm; margin-top:.4mm; font-style:normal; color:#5f7185; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+/* preview stage */
+.preview-stage{perspective:1400px;}
+.preview-card-flip{
+  width:var(--card-w); height:var(--card-h);
+  position:relative; transform-style:preserve-3d; transition:transform .6s cubic-bezier(.4,.2,.2,1);
+  cursor:pointer;
+}
+.preview-card-flip.flipped{transform:rotateY(180deg);}
+.preview-card-flip .face{position:absolute; inset:0; backface-visibility:hidden;}
+.preview-card-flip .face.back{transform:rotateY(180deg);}
+.flip-hint{font-size:11px; color:var(--muted); text-align:center; margin-top:10px;}
+.flip-hint b{color:var(--brand);}
+
+.rail-summary{background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; width:100%; font-size:12.5px; color:var(--muted);}
+.rail-summary b{color:var(--ink);}
+
+.empty-preview{
+  width:var(--card-w); height:var(--card-h); border-radius:4mm; border:1.5px dashed #b9b3a0;
+  display:flex; align-items:center; justify-content:center; text-align:center; padding:16px;
+  color:#8a8574; font-size:12.5px; background:#eceae2;
+}
+
+/* print grid & roster preview grid */
+.print-grid-preview{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; margin-top:16px;}
+.mini-card-slot{text-align:center;}
+.mini-card-slot .mini-scale{
+  transform:scale(.7); transform-origin:top center; width:var(--card-w); height:calc(var(--card-h) * .7); margin:0 auto;
+}
+.mini-card-slot .mini-name{font-size:11.5px; font-weight:700; margin-top:-4px;}
+
+.printbar{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;}
+.note{
+  background:#fbf3d9; border:1px solid #e9d48a; color:#5c4300; font-size:12.5px;
+  padding:10px 14px; border-radius:9px; margin-top:14px;
+}
+
+.locked-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;margin-bottom:14px;}
+@media(max-width:640px){.locked-grid{grid-template-columns:1fr;}}
+.locked-item .k{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.locked-item .v{font-size:14px;font-weight:600;margin-top:2px;}
+.locked-logos{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+.locked-logo{text-align:center;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;}
+.locked-logo img,.locked-logo .miss{width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 4px;}
+.locked-logo .miss{border:1.5px dashed var(--danger);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--danger);font-size:18px;}
+.locked-logo img.sig{width:110px;height:60px;}
+.save-status{font-size:12px;color:#cfd9ec;background:rgba(255,255,255,.1);padding:5px 10px;border-radius:99px;}
+.save-status.err{background:#b23b3b;color:#fff;}
+.rec-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.rec-tools input[type=text]{max-width:260px;}
+.log-item{font-size:12.5px;padding:8px 0;border-bottom:1px solid var(--line);}
+.log-item .when{font-weight:700;}
+.log-item .who{color:var(--muted);}
+#printArea{display:none;}
+
+@media print{
+  html, body{-webkit-print-color-adjust:exact; print-color-adjust:exact; color-adjust:exact;}
+  *, *::before, *::after{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important;}
+  /* The on-screen app is only hidden with visibility, so it still took up
+     layout space and pushed blank, beige extra pages after the cards (the
+     back sheet came out as 2 pages). Remove it from layout entirely and
+     print on white paper. */
+  html, body{background:#fff !important; min-height:0 !important; height:auto !important;}
+  .app{display:none !important;}
+  body *{visibility:hidden;}
+  #printArea, #printArea *{visibility:visible;}
+  .reg-mark{visibility:visible !important;}
+  #printArea{display:block; position:static; width:100%;}
+  @page{ size:A4; margin:10mm; }
+  .print-page{
+    display:grid; grid-template-columns:repeat(2, var(--card-w)); grid-auto-rows:var(--card-h);
+    gap:6mm 8mm; justify-content:center; page-break-after:always;
+  }
+  .print-page:last-child{page-break-after:auto;}
+  .idcard{box-shadow:none; border:.2mm solid #ccc;}
+  .print-blank{width:var(--card-w); height:var(--card-h);}
+  /* manual fine-tune nudge for the BACK sheets only — compensates for the
+     small, printer-specific registration drift that happens when re-feeding
+     already-printed paper for the second side. Set via JS custom properties
+     right before printing; 0mm/0mm (the default) changes nothing. */
+  .print-page.is-back{ transform:translate(var(--boffx,0mm), var(--boffy,0mm)); }
+  /* Registration marks: faint crosshair ticks fixed to the same 4 spots on
+     EVERY printed page (front or back). They sit at symmetric left/right
+     offsets from the page edges, so the flip that mirrors the cards mirrors
+     this mark set onto itself — meaning if the marks don't overlap when you
+     hold the sheet to the light, that gap IS your true front/back
+     registration error, unaffected by which card design is on the page.
+     Use it together with the nudge fields to dial in the last fraction of
+     a millimeter. */
+  .reg-mark{ display:block !important; position:fixed; width:4mm; height:4mm; pointer-events:none; z-index:999; }
+  .reg-mark::before,.reg-mark::after{ content:''; position:absolute; background:rgba(0,0,0,.4); }
+  .reg-mark::before{ top:50%; left:0; width:100%; height:.18mm; transform:translateY(-50%); }
+  .reg-mark::after{ left:50%; top:0; height:100%; width:.18mm; transform:translateX(-50%); }
+  .reg-mark.tl{ top:2mm; left:2mm; }
+  .reg-mark.tr{ top:2mm; right:2mm; }
+  .reg-mark.bl{ bottom:2mm; left:2mm; }
+  .reg-mark.br{ bottom:2mm; right:2mm; }
+}
+.reg-mark{ display:none; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brandmark">ID</div>
+    <div>
+      <h1>School ID Generator</h1>
+      <div class="sub">Ferrol Central Elementary School · front &amp; back ATM-size ID cards</div>
+    </div>
+    <div class="save-status" id="save-status">Loading…</div>
+    <div class="steps">
+      <button class="step-btn active" data-step="setup"><span class="n">1</span> School Info</button>
+      <button class="step-btn" data-step="students"><span class="n">2</span> Students</button>
+      <button class="step-btn" data-step="print"><span class="n">3</span> Print</button>
+      <button class="step-btn" data-step="records"><span class="n">4</span> Saved IDs</button>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- ================= STEP 1: SETUP ================= -->
+    <section class="panel active" id="panel-setup">
+
+      <div class="card-block">
+        <h3>School information <span class="count-pill">🔒 Permanent</span></h3>
+        <p class="hint">Set once in <b>config.js</b> and the <b>assets</b> folder. These appear on every ID automatically and cannot be changed from this page.</p>
+        <div class="locked-grid" id="locked-info"></div>
+        <div class="locked-logos" id="locked-logos"></div>
+        <div class="field" style="max-width:240px;margin:16px 0 0;">
+          <label>Validity starts (SY)</label>
+          <input type="number" id="s-yearstart" placeholder="e.g. 2026" min="1990" max="2100">
+        </div>
+      </div>
+
+      <div class="card-block">
+        <h3>Card design <span class="count-pill">🔒 Permanent</span></h3>
+        <p class="hint">The ID design and colors are fixed. The live preview on the right shows exactly how every card will look.</p>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn btn-primary" id="goto-students">Continue to Students →</button>
+      </div>
+    </section>
+
+    <!-- ================= STEP 2: STUDENTS ================= -->
+    <section class="panel" id="panel-students">
+
+      <div class="card-block">
+        <h3>Add a student</h3>
+        <p class="hint">Fill in the details, capture or upload a photo, then add to the roster below.</p>
+
+        <div class="grid2">
+          <div class="field"><label>Full name</label><input type="text" id="st-name" placeholder="Juan Dela Cruz"></div>
+          <div class="field"><label>Learner Reference Number (LRN)</label><input type="text" id="st-lrn" maxlength="12" placeholder="12-digit LRN"></div>
+          <div class="field"><label>Birthdate</label><input type="date" id="st-bday"></div>
+          <div class="field"><label>Contact no.</label><input type="tel" id="st-contact" placeholder="09xx xxx xxxx"></div>
+          <div class="field" style="grid-column:1/-1"><label>Address</label><textarea id="st-address" placeholder="House no., Street, Barangay, Municipality"></textarea></div>
+          <div class="field"><label>Parent / Guardian</label><input type="text" id="st-parent" placeholder="Maria Dela Cruz"></div>
+          <div class="field"><label>Emergency contact person</label><input type="text" id="st-emergency" placeholder="Same as guardian, or another relative"></div>
+        </div>
+
+        <div class="field" style="margin-top:6px;">
+          <label>Photo</label>
+          <div class="photo-tabs">
+            <button type="button" class="photo-tab active" data-mode="upload">Upload photo</button>
+            <button type="button" class="photo-tab" data-mode="camera">Use camera</button>
+          </div>
+          <div class="photo-stage" id="photo-stage">
+            <div class="empty">No photo yet</div>
+          </div>
+          <div class="photo-controls" id="photo-controls-upload">
+            <input type="file" accept="image/*" id="st-photo-file">
+          </div>
+          <div class="photo-controls" id="photo-controls-camera" style="display:none;">
+            <button class="btn btn-ghost btn-sm" id="cam-start">Start camera</button>
+            <button class="btn btn-primary btn-sm" id="cam-capture" disabled>Capture</button>
+            <button class="btn btn-ghost btn-sm" id="cam-retake" style="display:none;">Retake</button>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn btn-ghost" id="clear-student-form">Clear form</button>
+          <button class="btn btn-primary" id="add-student">+ Add to roster</button>
+        </div>
+      </div>
+
+      <div class="card-block">
+        <h3>Roster <span class="count-pill" id="roster-count">0</span></h3>
+        <p class="hint">Check students to include when printing. Click a row to preview that ID.</p>
+        <table class="roster" id="roster-table">
+          <thead>
+            <tr><th></th><th></th><th>Name</th><th>LRN</th><th>Contact</th><th></th></tr>
+          </thead>
+          <tbody id="roster-body"></tbody>
+        </table>
+        <div class="roster-empty" id="roster-empty">
+          <b>No students yet</b>
+          Add one above, or import a batch with a CSV file.
+        </div>
+
+        <div class="csv-bar">
+          <button class="btn btn-ghost btn-sm" id="csv-import-btn">📄 Import CSV (bulk / automatic data)</button>
+          <input type="file" id="csv-file" accept=".csv" style="display:none;">
+          <button class="btn btn-ghost btn-sm" id="csv-template-btn">Download CSV template</button>
+          <span class="fname" id="csv-fname"></span>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn btn-ghost" id="back-to-setup">← Back</button>
+        <button class="btn btn-primary" id="goto-print">Continue to Print →</button>
+      </div>
+    </section>
+
+    <!-- ================= STEP 3: PRINT ================= -->
+    <section class="panel" id="panel-print">
+      <div class="card-block">
+        <h3>Print batch <span class="count-pill" id="print-count">0 selected</span></h3>
+        <p class="hint">Cards print true to size (53.98 × 85.6mm — standard ATM/ID card). 6 per A4 sheet, with cut guides.</p>
+        <div class="printbar">
+          <button class="btn btn-ghost btn-sm" id="select-all">Select all</button>
+          <button class="btn btn-ghost btn-sm" id="select-none">Select none</button>
+          <button class="btn btn-gold" id="print-front">🖨 Print FRONT sheet(s)</button>
+          <button class="btn btn-gold" id="print-back">🖨 Print BACK sheet(s)</button>
+          <button class="btn btn-primary" id="print-both">🖨 Print front, then back</button>
+        </div>
+        <div class="note">Tip: print the front sheets first. Then take that <b>same paper</b> and flip each sheet over <b>left-to-right, like turning a page in a book</b> (keep the top edge as the top edge), and feed it back into the printer to print the backs — this keeps every card's back aligned with its own front.</div>
+
+        <div class="card-block" style="margin:14px 0 0; padding:16px 18px;">
+          <h3 style="font-size:14px;">Fine-tune BACK alignment</h3>
+          <p class="hint">Every printer feeds re-inserted paper a little differently, so the back sheet can land a fraction of a millimeter off even though the layout itself is mirrored correctly. Look for the <b>4 faint crosshair marks</b> now printed in the corners of every sheet — hold a front and back sheet together up to the light; any gap between the crosshairs is the true registration error. Nudge here to close that gap, then reprint the BACK sheet.</p>
+          <div class="grid2" style="max-width:360px;">
+            <div class="field">
+              <label>Left / right (mm)</label>
+              <input type="number" id="back-offset-x" value="0" step="0.25" min="-10" max="10">
+            </div>
+            <div class="field">
+              <label>Up / down (mm)</label>
+              <input type="number" id="back-offset-y" value="0" step="0.25" min="-10" max="10">
+            </div>
+          </div>
+        </div>
+
+        <div class="print-grid-preview" id="print-grid-preview"></div>
+      </div>
+    </section>
+
+    <!-- ================= STEP 4: SAVED IDS ================= -->
+    <section class="panel" id="panel-records">
+      <div class="card-block">
+        <h3>Saved IDs <span class="count-pill" id="rec-count">0</span></h3>
+        <p class="hint">Every ID you create is saved automatically in this browser, even after you close the page. Because it is stored per browser and per computer, download a backup regularly and keep it safe.</p>
+        <div class="rec-tools">
+          <input type="text" id="rec-search" placeholder="Search name or LRN">
+          <button class="btn btn-primary btn-sm" id="rec-export">⬇ Download backup (.json)</button>
+          <button class="btn btn-ghost btn-sm" id="rec-import-btn">⬆ Restore backup</button>
+          <input type="file" id="rec-import" accept=".json,application/json" style="display:none;">
+          <button class="btn btn-ghost btn-sm" id="rec-csv">Export list (.csv)</button>
+          <button class="btn btn-danger btn-sm" id="rec-clear">Delete all</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="roster">
+            <thead><tr><th>Name</th><th>LRN</th><th>Created</th><th>Last printed</th><th>Prints</th><th></th></tr></thead>
+            <tbody id="rec-body"></tbody>
+          </table>
+        </div>
+        <div class="roster-empty" id="rec-empty" style="display:none;"><b>No saved IDs yet</b>Add students in step 2 and they will appear here.</div>
+      </div>
+      <div class="card-block">
+        <h3>Print history</h3>
+        <p class="hint">A log of every batch you sent to the printer.</p>
+        <div id="log-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ RIGHT RAIL: LIVE CARD PREVIEW ============ -->
+  <div class="rail">
+    <h2>Live preview</h2>
+    <div class="preview-stage">
+      <div class="preview-card-flip" id="preview-flip">
+        <div class="face front"><div id="preview-front-slot"></div></div>
+        <div class="face back"><div id="preview-back-slot"></div></div>
+      </div>
+    </div>
+    <div class="flip-hint">Click the card to flip · showing <b id="preview-who">new entry</b></div>
+    <div class="rail-summary" id="rail-summary">Fill in the school setup to see your ID come to life here.</div>
+  </div>
+
+</div>
+
+<div id="printArea"></div>
+<div class="reg-mark tl"></div>
+<div class="reg-mark tr"></div>
+<div class="reg-mark bl"></div>
+<div class="reg-mark br"></div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const CFG = window.SCHOOL_CONFIG || {};
+const CFG_LOGOS = CFG.logos || {};
+const settings = {
+  name: CFG.schoolName||'', address: CFG.schoolAddress||'', code: CFG.schoolCode||'',
+  yearStart: CFG.validityStartYear || 2026,
+  logos:{school:CFG_LOGOS.school||null, deped:CFG_LOGOS.deped||null, bagong:CFG_LOGOS.bagong||null, district:CFG_LOGOS.district||null},
+  principal: CFG.principalName||'', ptitle: CFG.principalTitle||'Principal I', signature: CFG.signature||null,
+  colors: Object.assign({primary:'#1e3a5f', accent:'#4a90d9', top:'#eef2f7', bottom:'#0f2137'}, CFG.colors||{})
+};
+let printLog = []; // {at, side, count, names[]}
+
+let students = []; // {id,name,lrn,bday,address,parent,emergency,contact,photo,selected}
+let currentPhoto = null; // photo currently staged for the "add student" form
+let editingId = null;
+
+const THEMES = [
+  {name:'Steel Blue', primary:'#1e3a5f', accent:'#4a90d9', top:'#eef2f7', bottom:'#0f2137'},
+  {name:'Corporate Slate', primary:'#2b3440', accent:'#6b8fb0', top:'#eef1f4', bottom:'#161b22'},
+  {name:'Executive Green', primary:'#1a3d33', accent:'#4fa88a', top:'#eef4f1', bottom:'#0c211b'},
+  {name:'Slate & Teal', primary:'#1c2530', accent:'#14b8a6', top:'#ffffff', bottom:'#1c2530'},
+  {name:'Slate & Coral', primary:'#1c2530', accent:'#ff6b4a', top:'#ffffff', bottom:'#1c2530'},
+  {name:'Ink & Amber', primary:'#111827', accent:'#f59e0b', top:'#ffffff', bottom:'#111827'},
+  {name:'Emerald & Foil', primary:'#0b3d2e', accent:'#d4af37', top:'#f3ecd9', bottom:'#08251c'},
+  {name:'Navy & Gold', primary:'#0f2a52', accent:'#f2c230', top:'#f4cb43', bottom:'#1e3a8c'},
+  {name:'Forest & Cream', primary:'#1f5c3d', accent:'#f2c230', top:'#d9c98a', bottom:'#2f7d4f'},
+  {name:'Maroon & Silver', primary:'#5c1a2b', accent:'#d9c98a', top:'#c9a2ab', bottom:'#7a2338'},
+  {name:'Sky & White', primary:'#154b7a', accent:'#ffd166', top:'#bfe3ff', bottom:'#2779b6'},
+];
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function el(id){return document.getElementById(id);}
+function esc(str){ return (str||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d+'T00:00:00');
+  if(isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+}
+function uid(){ return 'st_'+Math.random().toString(36).slice(2,10); }
+
+function readFileAsDataURL(file, cb){
+  const reader = new FileReader();
+  reader.onload = e => cb(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+/* ============================================================
+   SETUP PANEL
+   ============================================================ */
+function applyColors(){
+  document.documentElement.style.setProperty('--card-primary', settings.colors.primary);
+  document.documentElement.style.setProperty('--card-accent', settings.colors.accent);
+  document.documentElement.style.setProperty('--card-outer-top', settings.colors.top);
+  document.documentElement.style.setProperty('--card-outer-bottom', settings.colors.bottom);
+}
+el('s-yearstart').addEventListener('input', ()=>{
+  settings.yearStart = parseInt(el('s-yearstart').value) || 2026;
+  refreshPreview(); persist();
+});
+
+/* ============================================================
+   STEP NAV
+   ============================================================ */
+function showStep(step){
+  document.querySelectorAll('.step-btn').forEach(b=>b.classList.toggle('active', b.dataset.step===step));
+  document.querySelectorAll('section.panel').forEach(p=>p.classList.remove('active'));
+  el('panel-'+step).classList.add('active');
+  if(step==='print') renderPrintGridPreview();
+  if(step==='records') renderRecords();
+}
+document.querySelectorAll('.step-btn').forEach(b=> b.addEventListener('click', ()=> showStep(b.dataset.step)) );
+el('goto-students').addEventListener('click', ()=> showStep('students'));
+el('back-to-setup').addEventListener('click', ()=> showStep('setup'));
+el('goto-print').addEventListener('click', ()=> showStep('print'));
+
+/* ============================================================
+   PHOTO CAPTURE (upload / live camera)
+   ============================================================ */
+let stream = null;
+document.querySelectorAll('.photo-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.photo-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const mode = tab.dataset.mode;
+    el('photo-controls-upload').style.display = mode==='upload' ? 'flex':'none';
+    el('photo-controls-camera').style.display = mode==='camera' ? 'flex':'none';
+    if(mode==='upload') stopCamera();
+  });
+});
+
+el('st-photo-file').addEventListener('change', ()=>{
+  const f = el('st-photo-file').files[0]; if(!f) return;
+  readFileAsDataURL(f, url=>{
+    currentPhoto = url;
+    el('photo-stage').innerHTML = `<img src="${url}">`;
+    refreshPreview();
+  });
+});
+
+el('cam-start').addEventListener('click', async ()=>{
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}});
+    el('photo-stage').innerHTML = `<video autoplay playsinline></video>`;
+    el('photo-stage').querySelector('video').srcObject = stream;
+    el('cam-capture').disabled = false;
+    el('cam-retake').style.display='none';
+  }catch(err){
+    el('photo-stage').innerHTML = `<div class="empty">Camera unavailable — check browser permissions.</div>`;
+  }
+});
+el('cam-capture').addEventListener('click', ()=>{
+  const video = el('photo-stage').querySelector('video');
+  if(!video) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video,0,0);
+  currentPhoto = canvas.toDataURL('image/jpeg',0.92);
+  el('photo-stage').innerHTML = `<img src="${currentPhoto}">`;
+  stopCamera();
+  el('cam-capture').disabled = true;
+  el('cam-retake').style.display='inline-flex';
+  refreshPreview();
+});
+el('cam-retake').addEventListener('click', ()=>{ el('cam-start').click(); });
+function stopCamera(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+}
+
+/* ============================================================
+   STUDENT FORM -> ROSTER
+   ============================================================ */
+function collectStudentForm(){
+  return {
+    name: el('st-name').value.trim(),
+    lrn: el('st-lrn').value.trim(),
+    bday: el('st-bday').value,
+    contact: el('st-contact').value.trim(),
+    address: el('st-address').value.trim(),
+    parent: el('st-parent').value.trim(),
+    emergency: el('st-emergency').value.trim(),
+    photo: currentPhoto
+  };
+}
+function clearStudentForm(){
+  ['st-name','st-lrn','st-bday','st-contact','st-address','st-parent','st-emergency'].forEach(id=> el(id).value='');
+  currentPhoto = null;
+  el('photo-stage').innerHTML = '<div class="empty">No photo yet</div>';
+  el('st-photo-file').value='';
+  editingId = null;
+  el('add-student').textContent = '+ Add to roster';
+}
+el('clear-student-form').addEventListener('click', clearStudentForm);
+
+el('add-student').addEventListener('click', ()=>{
+  const data = collectStudentForm();
+  if(!data.name || !data.lrn){ alert('Please provide at least a name and LRN.'); return; }
+  if(editingId){
+    const idx = students.findIndex(s=>s.id===editingId);
+    if(idx>-1) students[idx] = {...students[idx], ...data, updatedAt:new Date().toISOString()};
+  } else {
+    const now = new Date().toISOString();
+    students.push({id:uid(), selected:true, createdAt:now, updatedAt:now, printCount:0, lastPrinted:null, ...data});
+  }
+  clearStudentForm();
+  renderRoster();
+  persist();
+});
+
+// live-preview from the form as you type (before it's added)
+['st-name','st-lrn','st-bday','st-contact','st-address','st-parent','st-emergency'].forEach(id=>{
+  el(id).addEventListener('input', ()=> refreshPreview());
+});
+
+/* ============================================================
+   ROSTER TABLE
+   ============================================================ */
+function renderRoster(){
+  const body = el('roster-body');
+  body.innerHTML='';
+  el('roster-count').textContent = students.length;
+  el('roster-empty').style.display = students.length ? 'none' : 'block';
+
+  students.forEach(s=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="checkbox" class="chk" ${s.selected?'checked':''}></td>
+      <td>${s.photo ? `<img class="roster-thumb" src="${s.photo}">` : `<div class="roster-thumb"></div>`}</td>
+      <td>${esc(s.name)}</td>
+      <td class="mono">${esc(s.lrn)}</td>
+      <td>${esc(s.contact)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
+        <button class="btn btn-danger btn-sm" data-act="del">Delete</button>
+      </td>`;
+    tr.querySelector('.chk').addEventListener('change', e=>{ s.selected = e.target.checked; persist(); });
+    tr.querySelector('[data-act=edit]').addEventListener('click', e=>{ e.stopPropagation(); editStudent(s.id); });
+    tr.querySelector('[data-act=del]').addEventListener('click', e=>{
+      e.stopPropagation();
+      if(confirm(`Remove ${s.name} from the roster?`)){ students = students.filter(x=>x.id!==s.id); renderRoster(); persist(); }
+    });
+    tr.addEventListener('click', ()=> previewStudent(s));
+    body.appendChild(tr);
+  });
+}
+function editStudent(id){
+  const s = students.find(x=>x.id===id); if(!s) return;
+  editingId = id;
+  el('st-name').value=s.name; el('st-lrn').value=s.lrn; el('st-bday').value=s.bday||'';
+  el('st-contact').value=s.contact; el('st-address').value=s.address;
+  el('st-parent').value=s.parent; el('st-emergency').value=s.emergency;
+  currentPhoto = s.photo;
+  el('photo-stage').innerHTML = s.photo ? `<img src="${s.photo}">` : '<div class="empty">No photo yet</div>';
+  el('add-student').textContent = 'Save changes';
+  showStep('students');
+  window.scrollTo({top:0,behavior:'smooth'});
+  refreshPreview();
+}
+function previewStudent(s){
+  currentPreviewStudent = s;
+  el('preview-who').textContent = s.name || 'student';
+  refreshPreview();
+}
+
+/* ============================================================
+   CSV IMPORT (bulk / "automatic data")
+   ============================================================ */
+el('csv-import-btn').addEventListener('click', ()=> el('csv-file').click());
+el('csv-file').addEventListener('change', ()=>{
+  const f = el('csv-file').files[0]; if(!f) return;
+  el('csv-fname').textContent = f.name;
+  Papa.parse(f, {
+    header:true, skipEmptyLines:true,
+    complete: res=>{
+      const norm = k => (k||'').toString().trim().toLowerCase().replace(/[^a-z]/g,'');
+      let added=0;
+      res.data.forEach(row=>{
+        const map={};
+        Object.keys(row).forEach(k=> map[norm(k)] = row[k]);
+        const name = map['name'] || map['fullname'] || map['studentname'];
+        const lrn = map['lrn'] || map['learnersreferencenumber'] || map['learnerreferencenumber'];
+        if(!name || !lrn) return;
+        students.push({
+          id:uid(), selected:true, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), printCount:0, lastPrinted:null,
+          name: (name||'').trim(),
+          lrn: (lrn||'').toString().trim(),
+          bday: map['birthdate']||map['bday']||map['dateofbirth']||'',
+          contact: map['contactno']||map['contact']||map['contactnumber']||'',
+          address: map['address']||'',
+          parent: map['parentguardian']||map['parent']||map['guardian']||'',
+          emergency: map['emergencycontact']||map['incaseofemergency']||map['emergency']||'',
+          photo: null
+        });
+        added++;
+      });
+      renderRoster(); persist();
+      alert(added ? `Imported ${added} student(s).` : 'No valid rows found — check that your CSV has "name" and "lrn" columns.');
+    }
+  });
+});
+el('csv-template-btn').addEventListener('click', ()=>{
+  const csv = 'name,lrn,birthdate,address,parent,emergency,contact\\n"Juan Dela Cruz",123456789012,2015-03-14,"Brgy. 1, Ferrol, Romblon","Maria Dela Cruz","Maria Dela Cruz",09171234567\\n';
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download='student-id-template.csv'; a.click();
+});
+
+/* ============================================================
+   CARD RENDERING (front / back) — used by preview + print
+   ============================================================ */
+function logoImg(url, cls){
+  return url ? `<img class="${cls}" src="${url}">` : `<div class="${cls==='logo'?'ph-logo':'ph'}"></div>`;
+}
+function smallLogoImg(url, emoji){
+  return url ? `<img src="${url}">` : `<div class="ph-logo-sm">${emoji||'🏛️'}</div>`;
+}
+function cardFrontHTML(s, barcodeId){
+  s = s || {};
+  return `
+  <div class="idcard front">
+    <div class="band-top"></div>
+    <div class="band-bottom"></div>
+    <div class="inner">
+      <div class="head">
+        ${logoImg(settings.logos.school,'logo')}
+        <div class="htext">
+          <div class="school-name">${esc(settings.name)||'School Name'}</div>
+          ${settings.address?`<div class="school-address">${esc(settings.address)}</div>`:''}
+        </div>
+      </div>
+      <div class="idband"${settings.code ? '' : ' style="visibility:hidden;"'}>SCHOOL ID: ${esc(settings.code)||'&nbsp;'}</div>
+      <div class="photo-wrap">${s.photo?`<img src="${s.photo}">`:`<div class="ph">🙂</div>`}</div>
+      <div class="nameband">${esc(s.name)||'Name'}</div>
+      <div class="lrn-label">Learner's Reference Number</div>
+      <div class="lrn-band">${esc(s.lrn)||'&nbsp;'}</div>
+      <div class="barcode-wrap"><svg class="bc" id="${barcodeId}" data-value="${esc(s.lrn||'')}"></svg></div>
+      <div class="footer-logos">
+        ${smallLogoImg(settings.logos.deped,'🏛️')}
+        ${smallLogoImg(settings.logos.bagong,'🇵🇭')}
+        ${smallLogoImg(settings.logos.district,'📍')}
+      </div>
+      <div class="foot-deco"></div>
+    </div>
+  </div>`;
+}
+function validityYears(){
+  const years = [];
+  for(let i=0;i<5;i++) years.push(settings.yearStart + i);
+  return years;
+}
+function validityRangeLabel(){
+  const y = validityYears();
+  return `${y[0]}-${y[0]+1} to ${y[y.length-1]}-${y[y.length-1]+1}`;
+}
+function validityQRText(s){
+  const list = validityYears().map(y=>`${y}-${y+1}`).join(', ');
+  return `SCHOOL ID VALIDITY\nSchool: ${settings.name||''}\nName: ${s.name||''}\nLRN: ${s.lrn||''}\nValid School Years: ${list}`;
+}
+function cardBackHTML(s, qrId){
+  s = s || {};
+  qrId = qrId || 'qr-'+Math.random().toString(36).slice(2);
+  return `
+  <div class="idcard back">
+    <div class="band-top"></div>
+    <div class="band-bottom"></div>
+    <div class="inner">
+      <div class="head">
+        ${logoImg(settings.logos.school,'logo')}
+        <div class="htext">
+          <div class="school-name">${esc(settings.name)||'School Name'}</div>
+          ${settings.address?`<div class="school-address">${esc(settings.address)}</div>`:''}
+        </div>
+      </div>
+      <div class="qr-section">
+        <div class="qr-code" data-value="${esc(validityQRText(s))}"></div>
+        <div class="qr-text">
+          <div class="qr-label">Valid Years</div>
+          <div class="qr-range">${esc(validityRangeLabel())}</div>
+          <div class="qr-sub">Scan to verify</div>
+        </div>
+      </div>
+      <div class="pi-band">Personal Information</div>
+      <div class="pi-body">
+        <div class="pi-line"><b>Birthdate:</b> <span class="val">${esc(fmtDate(s.bday))}</span></div>
+        <div class="pi-line pi-line-address"><b>Address:</b> <span class="val">${esc(s.address)}</span></div>
+        <div class="pi-emg">In case of Emergency please contact:</div>
+        <div class="pi-line"><b>Parent/Guardian:</b> <span class="val">${esc(s.parent||s.emergency)}</span></div>
+        <div class="pi-line"><b>Contact No.:</b> <span class="val">${esc(s.contact)}</span></div>
+        <div class="pi-footer-note">Property of the school. If found, please return.</div>
+        <div class="pi-sign">
+          <div class="sig-box">${settings.signature?`<img src="${settings.signature}">`:''}</div>
+          <div class="sig-name">${esc(settings.principal)||'Principal Name'}</div>
+          <div class="sig-title">${esc(settings.ptitle)||'Principal I'}</div>
+        </div>
+        <div class="foot-deco"></div>
+      </div>
+    </div>
+  </div>`;
+}
+function paintBarcodes(root){
+  root.querySelectorAll('svg.bc').forEach(svg=>{
+    const val = svg.dataset.value;
+    svg.removeAttribute('viewBox');
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    if(!val){ svg.style.display='none'; return; }
+    svg.style.display='';
+    try{
+      JsBarcode(svg, val, {format:'CODE128', displayValue:false, margin:0, height:60, width:1.6, background:'transparent'});
+      // JsBarcode sizes the SVG's own width/height to match however many bars
+      // the encoded value produced, which is what made the barcode (and the
+      // space it took up) change every time a different LRN was encoded.
+      // Locking it to a viewBox + preserveAspectRatio="none" makes the CSS
+      // box (100% x 9mm) the only thing that decides its size, always.
+      const w = svg.getAttribute('width'), h = svg.getAttribute('height');
+      if(w && h){
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        svg.setAttribute('preserveAspectRatio','none');
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+      }
+    }catch(e){ svg.style.display='none'; }
+  });
+}
+
+/* ============================================================
+   AUTO-FIT TEXT — keeps every labelled zone on the card a FIXED
+   size (set in CSS). Instead of long text pushing/expanding the
+   box and shifting everything below it, we shrink the font-size
+   just enough to fit; if it still won't fit at a sane minimum,
+   CSS ellipsis/line-clamp truncates it. The box itself never moves.
+   ============================================================ */
+function fitSingleLine(elm, minRatio){
+  if(!elm) return;
+  elm.style.fontSize=''; // reset before measuring, so repeated calls don't compound
+  const base = parseFloat(getComputedStyle(elm).fontSize);
+  if(!base) return;
+  let size = base, min = base*(minRatio||0.55), guard=0;
+  while(elm.scrollWidth > elm.clientWidth + 0.5 && size > min && guard < 40){
+    size -= base*0.03;
+    elm.style.fontSize = size+'px';
+    guard++;
+  }
+}
+function fitMultiline(elm, minRatio){
+  if(!elm) return;
+  elm.style.fontSize='';
+  const base = parseFloat(getComputedStyle(elm).fontSize);
+  if(!base) return;
+  let size = base, min = base*(minRatio||0.6), guard=0;
+  while(elm.scrollHeight > elm.clientHeight + 0.5 && size > min && guard < 40){
+    size -= base*0.03;
+    elm.style.fontSize = size+'px';
+    guard++;
+  }
+}
+function fitCardText(root){
+  if(!root) return;
+  root.querySelectorAll('.school-name').forEach(el=>fitMultiline(el, 0.4));
+  root.querySelectorAll('.school-address').forEach(el=>fitMultiline(el, 0.5));
+  root.querySelectorAll('.nameband').forEach(el=>fitMultiline(el, 0.45));
+  root.querySelectorAll('.lrn-band').forEach(fitSingleLine);
+  root.querySelectorAll('.idband').forEach(fitSingleLine);
+  root.querySelectorAll('.qr-range').forEach(fitSingleLine);
+  root.querySelectorAll('.pi-line-address .val').forEach(fitMultiline);
+  /* previously this ran on the whole .pi-line ROW, not the .val text
+     itself. The value span already clips its own overflow (nowrap +
+     ellipsis), so the row's scrollWidth never exceeded its clientWidth
+     and the shrink loop never actually triggered — a long Parent/
+     Guardian name (or any other value) went straight to a hard
+     ellipsis cut at full size instead of shrinking to fit like the
+     address field does. Targeting .val directly, with a lower size
+     floor since full names can run long, fixes that. */
+  root.querySelectorAll('.pi-line:not(.pi-line-address) .val').forEach(el=>fitSingleLine(el, 0.42));
+  root.querySelectorAll('.pi-emg').forEach(fitSingleLine);
+  root.querySelectorAll('.pi-footer-note').forEach(fitSingleLine);
+  root.querySelectorAll('.sig-name, .sig-title').forEach(fitSingleLine);
+}
+function paintQRCodes(root){
+  root.querySelectorAll('.qr-code').forEach(node=>{
+    const val = node.dataset.value;
+    node.innerHTML = '';
+    if(!val) return;
+    try{
+      new QRCode(node, {text:val, width:300, height:300, correctLevel: QRCode.CorrectLevel.M});
+    }catch(e){ /* library unavailable — leave blank */ }
+  });
+}
+
+/* ============================================================
+   LIVE PREVIEW RAIL
+   ============================================================ */
+let currentPreviewStudent = null;
+el('preview-flip').addEventListener('click', ()=> el('preview-flip').classList.toggle('flipped'));
+
+function refreshPreview(){
+  const s = currentPreviewStudent && students.find(x=>x.id===currentPreviewStudent.id)
+    ? currentPreviewStudent
+    : collectStudentForm();
+  el('preview-who').textContent = (s && s.name) ? s.name : 'new entry';
+  el('preview-front-slot').innerHTML = cardFrontHTML(s, 'bc-preview');
+  el('preview-back-slot').innerHTML = cardBackHTML(s, 'qr-preview');
+  paintBarcodes(el('preview-front-slot'));
+  paintQRCodes(el('preview-back-slot'));
+  fitCardText(el('preview-front-slot'));
+  fitCardText(el('preview-back-slot'));
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(()=>{
+      fitCardText(el('preview-front-slot'));
+      fitCardText(el('preview-back-slot'));
+    });
+  }
+
+  el('rail-summary').innerHTML = `
+    <b>${esc(settings.name)||'Your school name'}</b><br>
+    ${students.length} student${students.length===1?'':'s'} in roster ·
+    ${students.filter(x=>x.selected).length} selected for print`;
+}
+
+/* ============================================================
+   PRINT
+   ============================================================ */
+el('select-all').addEventListener('click', ()=>{ students.forEach(s=>s.selected=true); renderRoster(); renderPrintGridPreview(); persist(); });
+el('select-none').addEventListener('click', ()=>{ students.forEach(s=>s.selected=false); renderRoster(); renderPrintGridPreview(); persist(); });
+
+function renderPrintGridPreview(){
+  const sel = students.filter(s=>s.selected);
+  el('print-count').textContent = sel.length + ' selected';
+  const wrap = el('print-grid-preview');
+  wrap.innerHTML='';
+  sel.forEach((s,i)=>{
+    const slot = document.createElement('div');
+    slot.className='mini-card-slot';
+    slot.innerHTML = `<div class="mini-scale">${cardFrontHTML(s,'bc-mini-'+i)}</div><div class="mini-name">${esc(s.name)}</div>`;
+    wrap.appendChild(slot);
+  });
+  paintBarcodes(wrap);
+  fitCardText(wrap);
+  if(!sel.length){
+    wrap.innerHTML = `<div class="roster-empty"><b>Nothing selected</b>Go back to Students and check who to include.</div>`;
+  }
+}
+
+function chunk(arr,n){ const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; }
+
+// How many card rows actually fit on one A4 page, given the CURRENT card
+// height. Previously hardcoded to "6 per page" (3 rows x 2 cols), which
+// only happened to fit when the card was 85.6mm tall. After enlarging the
+// card (94.2mm, then 102.72mm), 3 rows no longer fit inside the printable
+// area (A4 height 297mm minus the 10mm+10mm @page margins = 277mm) — the
+// 3rd row silently overflowed onto extra, misaligned space, which is what
+// made front and back sheets stop lining up. Computing rows from the
+// live --card-h means this stays correct no matter how the card size
+// changes later.
+const PAGE_H_MM = 277; // A4 (297mm) minus 10mm top + 10mm bottom @page margin
+const ROW_GAP_MM = 6;  // must match .print-page's row gap
+function cardsPerPrintPage(){
+  const cardH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h')) || 85.6;
+  const rows = Math.max(1, Math.floor((PAGE_H_MM + ROW_GAP_MM) / (cardH + ROW_GAP_MM)));
+  return rows * PRINT_COLS;
+}
+
+// The print grid is 2 columns wide (see .print-page). Front and back sheets
+// are printed as two SEPARATE passes: print the fronts, then physically flip
+// that same paper over — left edge becomes right edge, like turning a page —
+// and feed it back in to print the backs (this is what the on-screen tip
+// tells the user to do). That flip mirrors every card's position left/right,
+// but top-to-bottom stays the same. So if we laid out the back sheet in the
+// same left-to-right order as the front, card 1's back would land behind
+// card 2's front, card 3's back behind card 4's front, and so on — which is
+// exactly the "front and back don't line up" symptom. To fix it, the back
+// sheet must have each ROW's cards reversed (right col becomes left, and
+// vice versa) so that after the physical flip, every back lands directly
+// behind its own front. Empty slots are kept as invisible placeholders so
+// the mirrored cards still land in the correct grid cell.
+const PRINT_COLS = 2;
+function mirrorForBack(group, cols){
+  const rows = chunk(group, cols);
+  const out = [];
+  rows.forEach(row=>{
+    const padded = row.slice();
+    while(padded.length < cols) padded.push(null);
+    padded.reverse().forEach(item=> out.push(item));
+  });
+  return out;
+}
+
+function buildPrintPages(side){
+  const sel = students.filter(s=>s.selected);
+  const perPage = cardsPerPrintPage();
+  // No students selected yet? Print a blank template sheet (placeholder
+  // "School Name" / "Name" text, no LRN/QR data) instead of refusing to
+  // print — useful for test-fitting the layout, paper stock, or printer
+  // alignment before any real data is entered.
+  const source = sel.length ? sel : Array.from({length: perPage}, ()=>({}));
+  const pages = chunk(source, perPage);
+  return pages.map(group=>{
+    const ordered = side==='back' ? mirrorForBack(group, PRINT_COLS) : group;
+    const cards = ordered.map(s=>{
+      if(!s) return `<div class="print-blank"></div>`;
+      return side==='front' ? cardFrontHTML(s,'bc-p-'+Math.random().toString(36).slice(2)) : cardBackHTML(s);
+    }).join('');
+    return `<div class="print-page${side==='back'?' is-back':''}">${cards}</div>`;
+  }).join('');
+}
+
+function waitForImages(root){
+  const imgs = Array.from(root.querySelectorAll('img'));
+  return Promise.all(imgs.map(img=>{
+    // already loaded, or has no usable src -> nothing to wait for
+    if(img.complete) return Promise.resolve();
+    return new Promise(res=>{ img.onload=res; img.onerror=res; });
+  }));
+}
+// Resolve after `ms` no matter what, so a stuck font/image/animation-frame
+// can never block the print dialog from opening.
+function withTimeout(promise, ms){
+  return Promise.race([promise, new Promise(res=>setTimeout(res, ms))]);
+}
+function waitForPrintReady(area){
+  const fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  const settle = Promise.all([fontsReady, waitForImages(area)]).then(()=> new Promise(res=>{
+    // two animation frames = let the browser finish laying out/painting.
+    // rAF does not fire in background tabs, so a timeout backs it up.
+    requestAnimationFrame(()=> requestAnimationFrame(res));
+    setTimeout(res, 300);
+  }));
+  return withTimeout(settle, 2500);
+}
+function doPrint(side){
+  const area = el('printArea');
+  if(side==='both'){
+    const front = buildPrintPages('front');
+    const back = buildPrintPages('back');
+    if(front===null || back===null) return;
+    area.innerHTML = front + back;
+  } else {
+    const html = buildPrintPages(side);
+    if(html===null) return;
+    area.innerHTML = html;
+  }
+  // Manual fine-tune nudge for back sheets — compensates for whatever small,
+  // printer-specific drift shows up when the paper is re-fed for the second
+  // side. Read fresh every print so changing the fields takes effect on the
+  // very next print without needing a page reload.
+  const offX = parseFloat(el('back-offset-x') && el('back-offset-x').value) || 0;
+  const offY = parseFloat(el('back-offset-y') && el('back-offset-y').value) || 0;
+  area.style.setProperty('--boffx', offX+'mm');
+  area.style.setProperty('--boffy', offY+'mm');
+  try{
+    paintBarcodes(area);
+    paintQRCodes(area);
+    fitCardText(area);
+  }catch(e){ console.error('Print prep error:', e); }
+  let printed = false;
+  const go = ()=>{
+    if(printed) return;
+    printed = true;
+    try{ fitCardText(area); }catch(e){ console.error(e); }
+    try{ window.print(); logPrint(side); }
+    catch(e){
+      console.error(e);
+      alert('Could not open the print dialog. Open this file directly in Chrome/Edge (not a preview window) and try again, or press Ctrl+P.');
+    }
+  };
+  waitForPrintReady(area).then(go, go);
+  setTimeout(go, 3000); // absolute fallback
+}
+el('print-front').addEventListener('click', ()=> doPrint('front'));
+el('print-back').addEventListener('click', ()=> doPrint('back'));
+el('print-both').addEventListener('click', ()=> doPrint('both'));
+
+/* ============================================================
+   INIT
+   ============================================================ */
+/* ============================================================
+   PERMANENT STORAGE (IndexedDB, falls back to localStorage)
+   ============================================================ */
+const Store = {
+  db:null, mode:'idb',
+  async init(){
+    try{
+      this.db = await new Promise((res,rej)=>{
+        if(!window.indexedDB) return rej(new Error('no idb'));
+        const r = indexedDB.open('fces-id-generator',1);
+        r.onupgradeneeded = ()=>{ if(!r.result.objectStoreNames.contains('kv')) r.result.createObjectStore('kv'); };
+        r.onsuccess = ()=>res(r.result);
+        r.onerror = ()=>rej(r.error);
+      });
+    }catch(e){ this.mode='ls'; }
+    try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  },
+  get(key){
+    if(this.mode==='idb'){
+      return new Promise(res=>{
+        try{
+          const r = this.db.transaction('kv').objectStore('kv').get(key);
+          r.onsuccess = ()=>res(r.result);
+          r.onerror = ()=>res(undefined);
+        }catch(e){ res(undefined); }
+      });
+    }
+    try{ return Promise.resolve(JSON.parse(localStorage.getItem('fces:'+key))); }
+    catch(e){ return Promise.resolve(undefined); }
+  },
+  set(key,val){
+    if(this.mode==='idb'){
+      return new Promise(res=>{
+        try{
+          const tx = this.db.transaction('kv','readwrite');
+          tx.objectStore('kv').put(val,key);
+          tx.oncomplete = ()=>res(true);
+          tx.onerror = tx.onabort = ()=>res(false);
+        }catch(e){ res(false); }
+      });
+    }
+    try{ localStorage.setItem('fces:'+key, JSON.stringify(val)); return Promise.resolve(true); }
+    catch(e){ return Promise.resolve(false); }
+  }
+};
+
+let saveTimer = null, loaded = false;
+function setSaveStatus(kind){
+  const n = el('save-status'); if(!n) return;
+  n.classList.toggle('err', kind==='error');
+  n.textContent = kind==='saving' ? 'Saving…'
+    : kind==='error' ? '⚠ Could not save — download a backup'
+    : '✓ All changes saved · ' + students.length + ' ID' + (students.length===1?'':'s');
+}
+function persist(){
+  if(!loaded) return;
+  setSaveStatus('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 300);
+}
+async function flushSave(){
+  clearTimeout(saveTimer);
+  const ok1 = await Store.set('students', students);
+  const ok2 = await Store.set('printLog', printLog);
+  const ok3 = await Store.set('meta', {yearStart:settings.yearStart});
+  setSaveStatus(ok1 && ok2 && ok3 ? 'saved' : 'error');
+}
+window.addEventListener('pagehide', ()=>{ if(loaded) flushSave(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden && loaded) flushSave(); });
+
+/* ============================================================
+   PERMANENT SCHOOL INFO (read-only display + asset check)
+   ============================================================ */
+const ASSET_LABELS = {school:'School', deped:'DepEd', bagong:'Bagong Pilipinas', district:'District'};
+function testImage(url){
+  return new Promise(res=>{
+    if(!url) return res(false);
+    const im = new Image();
+    im.onload = ()=>res(true);
+    im.onerror = ()=>res(false);
+    im.src = url;
+  });
+}
+async function checkAssets(){
+  const missing = [];
+  for(const k of Object.keys(settings.logos)){
+    if(!(await testImage(settings.logos[k]))){ missing.push(settings.logos[k]||k); settings.logos[k]=null; }
+  }
+  if(!(await testImage(settings.signature))){ if(settings.signature) missing.push(settings.signature); settings.signature=null; }
+  return missing;
+}
+function renderLockedInfo(missing){
+  const item = (k,v)=>`<div class="locked-item"><div class="k">${k}</div><div class="v">${esc(v)||'—'}</div></div>`;
+  el('locked-info').innerHTML =
+    item('School name', settings.name) + item('School address', settings.address) +
+    item('School ID', settings.code) + item("Principal's name", settings.principal + (settings.ptitle?', '+settings.ptitle:''));
+  const logo = (k)=> settings.logos[k]
+    ? `<div class="locked-logo"><img src="${esc(settings.logos[k])}"><span>${ASSET_LABELS[k]}</span></div>`
+    : `<div class="locked-logo"><div class="miss">!</div><span>${ASSET_LABELS[k]}<br>missing</span></div>`;
+  const sig = settings.signature
+    ? `<div class="locked-logo"><img class="sig" src="${esc(settings.signature)}"><span>E-signature</span></div>`
+    : `<div class="locked-logo"><div class="miss" style="border-radius:8px;width:110px;">!</div><span>E-signature<br>missing</span></div>`;
+  el('locked-logos').innerHTML = Object.keys(ASSET_LABELS).map(logo).join('') + sig;
+  if(missing && missing.length){
+    el('locked-logos').insertAdjacentHTML('afterend',
+      `<div class="note">Missing image file(s): <b>${missing.map(esc).join(', ')}</b>. Upload them to the <b>assets</b> folder of your repository using exactly these names.</div>`);
+  }
+}
+
+/* ============================================================
+   SAVED IDs (records + print history + backup)
+   ============================================================ */
+function fmtStamp(iso){
+  if(!iso) return '—';
+  const d = new Date(iso); if(isNaN(d)) return '—';
+  return d.toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}) + ' ' +
+         d.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+}
+function renderRecords(){
+  const q = (el('rec-search').value||'').trim().toLowerCase();
+  const list = students.filter(s=> !q || (s.name||'').toLowerCase().includes(q) || (s.lrn||'').includes(q));
+  el('rec-count').textContent = students.length;
+  el('rec-empty').style.display = list.length ? 'none' : 'block';
+  const body = el('rec-body'); body.innerHTML='';
+  list.forEach(s=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${esc(s.name)}</td><td class="mono">${esc(s.lrn)}</td>
+      <td>${esc(fmtStamp(s.createdAt))}</td><td>${esc(fmtStamp(s.lastPrinted))}</td>
+      <td>${s.printCount||0}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" data-act="edit">Edit</button>
+        <button class="btn btn-danger btn-sm" data-act="del">Delete</button>
+      </td>`;
+    tr.querySelector('[data-act=edit]').addEventListener('click', ()=> editStudent(s.id));
+    tr.querySelector('[data-act=del]').addEventListener('click', ()=>{
+      if(confirm(`Permanently delete the saved ID of ${s.name}?`)){
+        students = students.filter(x=>x.id!==s.id); renderRoster(); renderRecords(); persist();
+      }
+    });
+    tr.addEventListener('dblclick', ()=> previewStudent(s));
+    body.appendChild(tr);
+  });
+  const log = el('log-list');
+  if(!printLog.length){ log.innerHTML = '<div class="roster-empty" style="padding:16px;">Nothing printed yet.</div>'; }
+  else{
+    log.innerHTML = printLog.slice().reverse().slice(0,60).map(e=>{
+      const names = (e.names||[]).slice(0,6).join(', ') + ((e.names||[]).length>6 ? ` +${e.names.length-6} more` : '');
+      const side = e.side==='both' ? 'front + back' : e.side;
+      return `<div class="log-item"><span class="when">${esc(fmtStamp(e.at))}</span> — ${esc(side)}, ${e.count} ID${e.count===1?'':'s'}<div class="who">${esc(names)}</div></div>`;
+    }).join('');
+  }
+}
+el('rec-search').addEventListener('input', renderRecords);
+
+function logPrint(side){
+  const sel = students.filter(s=>s.selected);
+  if(!sel.length) return; // blank test sheet, nothing to record
+  const now = new Date().toISOString();
+  sel.forEach(s=>{ s.printCount=(s.printCount||0)+1; s.lastPrinted=now; });
+  printLog.push({at:now, side, count:sel.length, names:sel.map(s=>s.name)});
+  if(printLog.length>500) printLog = printLog.slice(-500);
+  renderRoster(); persist();
+}
+
+function downloadBlob(blob, name){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+function stampName(ext){ return 'fces-id-' + new Date().toISOString().slice(0,10) + '.' + ext; }
+el('rec-export').addEventListener('click', ()=>{
+  const data = {app:'fces-id-generator', version:1, exportedAt:new Date().toISOString(),
+    colors:settings.colors, yearStart:settings.yearStart, students, printLog};
+  downloadBlob(new Blob([JSON.stringify(data)],{type:'application/json'}), 'backup-'+stampName('json'));
+});
+el('rec-import-btn').addEventListener('click', ()=> el('rec-import').click());
+el('rec-import').addEventListener('change', ()=>{
+  const f = el('rec-import').files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const d = JSON.parse(r.result);
+      if(!d || !Array.isArray(d.students)) throw new Error('bad file');
+      const byId = new Map(students.map(s=>[s.id,s]));
+      let added=0, updated=0;
+      d.students.forEach(s=>{
+        if(!s || !s.id) return;
+        if(byId.has(s.id)) updated++; else added++;
+        byId.set(s.id, s);
+      });
+      students = Array.from(byId.values());
+      if(Array.isArray(d.printLog)){
+        const seen = new Set(printLog.map(e=>e.at+e.side));
+        d.printLog.forEach(e=>{ if(!seen.has(e.at+e.side)) printLog.push(e); });
+        printLog.sort((a,b)=> (a.at<b.at?-1:1));
+      }
+      renderRoster(); renderRecords(); refreshPreview(); persist();
+      alert(`Backup restored: ${added} added, ${updated} updated.`);
+    }catch(e){ alert('That file is not a valid backup from this generator.'); }
+    el('rec-import').value='';
+  };
+  r.readAsText(f);
+});
+el('rec-csv').addEventListener('click', ()=>{
+  const cols = ['name','lrn','birthdate','address','parent','emergency','contact','created','last_printed','prints'];
+  const q = v=> '"' + String(v==null?'':v).replace(/"/g,'""') + '"';
+  const rows = students.map(s=>[s.name,s.lrn,s.bday,s.address,s.parent,s.emergency,s.contact,s.createdAt,s.lastPrinted,s.printCount||0].map(q).join(','));
+  downloadBlob(new Blob([cols.join(',')+'\n'+rows.join('\n')],{type:'text/csv'}), 'list-'+stampName('csv'));
+});
+el('rec-clear').addEventListener('click', ()=>{
+  if(!students.length) return;
+  if(!confirm(`Delete ALL ${students.length} saved IDs? Download a backup first — this cannot be undone.`)) return;
+  if(!confirm('Really delete everything?')) return;
+  students = []; printLog = []; currentPreviewStudent = null;
+  renderRoster(); renderRecords(); refreshPreview(); persist();
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+(async function init(){
+  const [missing] = await Promise.all([checkAssets(), Store.init()]);
+  const meta = await Store.get('meta');
+  if(meta){
+    if(meta.yearStart) settings.yearStart = meta.yearStart;
+  }
+  const saved = await Store.get('students');
+  if(Array.isArray(saved)) students = saved;
+  const log = await Store.get('printLog');
+  if(Array.isArray(log)) printLog = log;
+
+  el('s-yearstart').value = settings.yearStart;
+  loaded = true;
+  renderLockedInfo(missing);
+  applyColors();
+  renderRoster();
+  refreshPreview();
+  setSaveStatus('saved');
+})();
+
+</script>
+</body>
+</html>
